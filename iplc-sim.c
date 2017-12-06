@@ -6,7 +6,7 @@
 /***********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
-//#include <unistd.h> //Unix function not on windows...
+#include <unistd.h> //Unix function not on windows...
 #include <string.h>
 #include <math.h>
 
@@ -31,7 +31,7 @@ void iplc_sim_process_pipeline_rtype(char *instruction, int dest_reg,
 void iplc_sim_process_pipeline_lw(int dest_reg, int base_reg, unsigned int data_address);
 void iplc_sim_process_pipeline_sw(int src_reg, int base_reg, unsigned int data_address);
 void iplc_sim_process_pipeline_branch(int reg1, int reg2);
-void iplc_sim_process_pipeline_jump();
+void iplc_sim_process_pipeline_jump(char *instruction);
 void iplc_sim_process_pipeline_syscall();
 void iplc_sim_process_pipeline_nop();
 
@@ -172,10 +172,10 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     }
     
     // init the pipeline -- set all data to zero and instructions to NOP
-    //for (i = 0; i < MAX_STAGES; i++) {
-    //    // itype is set to O which is NOP type instruction
-    //    bzero(&(pipeline[i]), sizeof(pipeline_t));
-    //}
+    for (i = 0; i < MAX_STAGES; i++) {
+        // itype is set to O which is NOP type instruction
+        bzero(&(pipeline[i]), sizeof(pipeline_t));
+    }
 }
 
 /*
@@ -313,7 +313,7 @@ void iplc_sim_push_pipeline_stage()
     /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->ALU */
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
-    //bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
+    bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
 }
 
 /*
@@ -387,12 +387,19 @@ void iplc_sim_process_pipeline_syscall()
 {
     /* You must implement this function */
 	iplc_sim_push_pipeline_stage();
+	
+	pipeline[FETCH].itype = SYSCALL;
+	pipeline[FETCH].instruction_address = instruction_address;
 
 }
 
 void iplc_sim_process_pipeline_nop()
 {
     /* You must implement this function */
+	iplc_sim_push_pipeline_stage();
+
+	pipeline[FETCH].itype = NOP;
+	pipeline[FETCH].instruction_address = instruction_address;
 }
 
 /************************************************************************************************/
