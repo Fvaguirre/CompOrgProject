@@ -9,6 +9,7 @@
 #include <unistd.h> //Unix function not on windows...
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 
 #define MAX_CACHE_SIZE 10240
 #define CACHE_MISS_DELAY 10 // 10 cycle cache miss penalty
