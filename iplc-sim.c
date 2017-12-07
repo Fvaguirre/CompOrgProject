@@ -13,6 +13,12 @@
 #define MAX_CACHE_SIZE 10240
 #define CACHE_MISS_DELAY 10 // 10 cycle cache miss penalty
 #define MAX_STAGES 5
+#define TRUE 1
+#define FALSE 0
+
+typedef short int BIT;
+typedef unsigned int uint;
+typedef unsigned char BYTE;
 
 // init the simulator
 void iplc_sim_init(int index, int blocksize, int assoc);
@@ -46,6 +52,12 @@ typedef struct cache_line
     // a tag
     // a method for handling varying levels of associativity
     // a method for selecting which item in the cache is going to be replaced
+	BIT valid_bit, is_head, is_tail;
+	uint tag;
+	struct cache_line *prev, *next, *set_head, *set_tail;
+
+
+
 } cache_line_t;
 
 cache_line_t *cache=NULL;
@@ -167,10 +179,63 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     
     cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
     
-    // Dynamically create our cache based on the information the user entered
-    for (i = 0; i < (1<<index); i++) {
-    }
-    
+	// Dynamically create our cache based on the information the user entered
+	if (assoc > 1) {
+		for (i = 0; i < (1 << index); i++) {
+			//If current cache_line index is first in set, set as set_head
+			if (i % assoc == 0) {
+				cache[i].is_head = TRUE;
+				cache[i].is_tail = FALSE;
+				//Set the current cache_line as the head for the rest of the set...
+				for (j = 0; j < assoc; j++) {
+					cache[i + j].set_head = &cache[i];
+				}
+
+			}
+			//Else if last item in set mark as tail
+			else if (i % assoc == assoc - 1) {
+				cache[i].is_tail = TRUE;
+				cache[i].is_head = FALSE;
+				//Set the current cache_line as the tail for the set...
+				for (j = 0; j < assoc; j++) {
+					cache[i - j].set_tail = &cache[i];
+				}
+			}
+			//Set other struct members to 0 or NULL
+			cache[i].tag = cache[i].valid_bit = FALSE;
+			cache[i].prev = cache[i].next = NULL;
+			//If neither head or tail
+			cache[i].is_tail = cache[i].is_head = FALSE;
+
+		}
+	}
+	else {
+		cache_line_t* head = NULL;
+		cache_line_t* tail = NULL;
+		for (i = 0; i < (1 << index); i++) {
+			if (i == 0) {
+				cache[i].is_head = TRUE;
+				cache[i].is_tail = FALSE;
+				head = &cache[i];
+			}
+			else if (i == (1 << index - 1)) {
+				cache[i].is_tail = TRUE;
+				cache[i].is_head = FALSE;
+				tail = &cache[i];
+				for (j = 0; j < (1 << index); j++) {
+					cache[j].set_tail = tail;
+				}
+			}
+			cache[i].set_head = head;
+			//Set other struct members to 0 or NULL
+			cache[i].tag = cache[i].valid_bit = FALSE;
+			cache[i].prev = cache[i].next = NULL;
+			//If neither head or tail
+			cache[i].is_tail = cache[i].is_head = FALSE;
+
+
+		}
+	}
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -194,6 +259,52 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
     /* You must implement this function */
+	int i = 0;
+	cache_line_t* head = cache[index].set_head;
+	cache_line_t* tail = cache[index].set_tail;
+	cache_line_t* ptr = head;
+
+	//Find the entry within the set that hit
+	while ((i < assoc_entry) && ptr) {
+		ptr = ptr->next;
+		i++;
+	}
+	assert(ptr->valid_bit);
+
+	//If entry that hit is already the head/MRU of set
+	if (ptr->set_head = head) {
+		//do nothing
+		return;
+	}
+	//If entry that hit is the tail
+	else if (ptr->set_tail = ptr) {
+		ptr->prev->next = NULL;
+	}
+	else {
+		//Remove entry that hit from place in queue 
+		ptr->prev->next = ptr->next;
+		ptr->next->prev = ptr->prev;
+	}
+
+	//Move entry that hit to MRU
+	head->prev = ptr;
+	ptr->next = head;
+	ptr->prev = NULL;
+	head = ptr;
+
+	//Get new set_tail
+	while (ptr->next) {
+		ptr = ptr->next;
+	}
+	tail = ptr;
+
+	//Update the head_set & tail_set pointer for all items in set
+	for (i = 0; i < cache_assoc; i++) {
+		ptr->set_head = head;
+		ptr->set_tail = tail;
+		ptr = ptr->next;
+	}
+
 }
 
 /*
@@ -204,12 +315,61 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
  */
 int iplc_sim_trap_address(unsigned int address)
 {
-    int i=0, index=0;
-    int tag=0;
-    int hit=0;
-    
-    // Call the appropriate function for a miss or hit
+	int i = 0, index = 0;
+	int tag = 0;
+	int hit = 0;
 
+	cache_access++; //Cache is accessed
+
+	uint other_bits = cache_blockoffsetbits + cache_index;
+	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
+
+	tag = address >> other_bits;
+	index = (bit_mask & address) >> cache_blockoffsetbits; //if index represents actual lines and not sets, will have to fix
+	printf("This is the index: %d\n", index);
+	cache_line_t* head = cache[index].set_head;
+	cache_line_t* tail = cache[index].set_tail;
+	cache_line_t* ptr = head;
+
+
+	if (cache_assoc > 1) { 
+		index = index % cache_assoc;
+	}
+
+	while (ptr) {
+		if (ptr->valid_bit && ptr->tag == tag) {
+			//hit
+			hit = 1;
+			cache_hit++;
+			iplc_sim_LRU_update_on_hit(index, i);
+			break;
+		}
+		i++;
+		ptr = ptr->next;
+	}
+	//For loop ends; address is not yet stored
+	//miss
+	cache_miss++;
+	iplc_sim_LRU_replace_on_miss(index, tag);
+	// if (cache[index].valid_bit){
+	//     if (cache[index].tag == tag){
+	//         //Hit
+	//         hit = 1;
+	//         cache_hit++;
+	//         iplc_sim_LRU_update_on_hit(index, i);
+	//     }
+	//     else{
+
+	//     }
+	// }
+
+
+
+
+	// Call the appropriate function for a miss or hit
+
+	/* expects you to return 1 for hit, 0 for miss */
+	return hit;
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
 }
