@@ -387,9 +387,8 @@ int iplc_sim_trap_address(unsigned int address)
 
 	/* expects you to return 1 for hit, 0 for miss */
 	return hit;
-<<<<<<< HEAD
-=======
-/*=======
+
+/*
     int i=0, index=0; //I - i is the empty set value, index is the index in our cache
     int tag=0;//I - the tag is the data being stowed in the cache
     int hit=0;//I - if there was a hit
@@ -416,10 +415,8 @@ int iplc_sim_trap_address(unsigned int address)
     else{
         iplc_sim_LRU_replace_on_miss(index,tag);
     }
->>>>>>> origin/master
     // expects you to return 1 for hit, 0 for miss
     return hit;*/
->>>>>>> origin/master
 }
 
 /*
