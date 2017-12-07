@@ -252,6 +252,11 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
     /* You must implement this function */
 
+
+    //PROBABLY NEEDS SOME MODIFICATION FOR THE DIFFERENT ASSOCIATIVITES, IE if its 1 at least.
+
+
+
     //finds the head and tail of the sets with an iterator at ptr
     cache_line_t* head = cache[index].set_head;
     cache_line_t* tail = cache[index].set_tail;
