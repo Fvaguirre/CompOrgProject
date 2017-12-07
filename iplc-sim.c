@@ -315,7 +315,6 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
  */
 int iplc_sim_trap_address(unsigned int address)
 {
-<<<<<<< HEAD
 	int i = 0, index = 0;
 	int tag = 0;
 	int hit = 0;
@@ -371,36 +370,6 @@ int iplc_sim_trap_address(unsigned int address)
 
 	/* expects you to return 1 for hit, 0 for miss */
 	return hit;
-=======
-    int i=0, index=0; //I - i is the empty set value, index is the index in our cache
-    int tag=0;//I - the tag is the data being stowed in the cache
-    int hit=0;//I - if there was a hit
-    
-    //finding the index via bi twiddling
-    int temp = address;
-    temp = temp >> cache_blockoffsetbits;
-    index = 1;
-    index = index << cache_index+1;
-    index = index -1;
-    index = index & temp;
-
-    //finding the tag
-    //doesn't work yet, I think I'm close though, working on using bit shifting to find it
-    tag = address >> (cache_blockoffsetbits+cache_index);
-
-    //if()
-
-    // Call the appropriate function for a miss or hit
-
-    if(hit){
-        iplc_sim_LRU_update_on_hit(index,tag);//I - I presume we store tag an not address?
-    }
-    else{
-        iplc_sim_LRU_replace_on_miss(index,tag);
-    }
->>>>>>> origin/master
-    /* expects you to return 1 for hit, 0 for miss */
-    return hit;
 }
 
 /*
