@@ -250,6 +250,23 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
     /* You must implement this function */
+
+    //finds the head and tail of the sets with an iterator at ptr
+    cache_line_t* head = cache[index].set_head;
+    cache_line_t* tail = cache[index].set_tail;
+    cache_line_t* ptr = head;
+
+    //looks through the list to see if there are any empty spaces, and if there is not it goes to the last space
+    while(ptr->valid_bit){
+        if(ptr->valid_bit & ptr == tail){
+            break;
+        }
+        ptr = ptr->next;
+    }
+    //store the value at ptr here...
+    ptr->valid_bit = TRUE;
+    ptr->tag = tag;
+    //how do you store things in this cache?
 }
 
 /*
@@ -371,7 +388,7 @@ int iplc_sim_trap_address(unsigned int address)
 
 	/* expects you to return 1 for hit, 0 for miss */
 	return hit;
-=======
+/*=======
     int i=0, index=0; //I - i is the empty set value, index is the index in our cache
     int tag=0;//I - the tag is the data being stowed in the cache
     int hit=0;//I - if there was a hit
@@ -399,8 +416,8 @@ int iplc_sim_trap_address(unsigned int address)
         iplc_sim_LRU_replace_on_miss(index,tag);
     }
 >>>>>>> origin/master
-    /* expects you to return 1 for hit, 0 for miss */
-    return hit;
+    // expects you to return 1 for hit, 0 for miss
+    return hit;*/
 }
 
 /*
