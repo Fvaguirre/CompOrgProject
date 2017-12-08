@@ -214,22 +214,10 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 					cache[i - j].set_tail = &cache[i];
 				}
 			}
-<<<<<<< HEAD
-			//Set other struct members to 0 or NULL
-			cache[i].tag = cache[i].valid_bit = FALSE;
-			cache[i].prev = cache[i].next = NULL;
-			//If neither head or tail
-			cache[i].is_tail = cache[i].is_head = FALSE;
-=======
->>>>>>> origin/master
 			// //Set other struct members  NULL
 			// cache[i].prev = cache[i].next = NULL;
             cache[i].valid_bit = 0;
             cache[i].tag = 0;
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/master
 		}
 	}
 	else {
@@ -243,16 +231,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
                 cache[i].next = &cache[i+1];
                 cache[i].prev = NULL;
 			}
-<<<<<<< HEAD
-			else if (i == (1 << index - 1)) {
-				cache[i].is_tail = TRUE;
-				cache[i].is_head = FALSE;
-				tail = &cache[i];
-				for (j = 0; j < (1 << index); j++) {
-					cache[j].set_tail = tail;
-				}
-=======
->>>>>>> origin/master
             //If at tail
 			else if (i == (1 << index) - 1) {
                 printf("we get here 2\n");
@@ -262,16 +240,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 			}
             //Set head for all items in cache
 			cache[i].set_head = head;
-<<<<<<< HEAD
-			//Set other struct members to 0 or NULL
-			cache[i].tag = cache[i].valid_bit = FALSE;
-			cache[i].prev = cache[i].next = NULL;
-			//If neither head or tail
-			cache[i].is_tail = cache[i].is_head = FALSE;
-
-
-=======
->>>>>>> origin/master
             cache[i].valid_bit = 0;
             cache[i].tag = 0;
 			// //Set other struct members to NULL
@@ -368,13 +336,6 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
         }
         ptr = ptr->next;
     }
-<<<<<<< HEAD
-    //store the value at ptr here...
-    ptr->valid_bit = TRUE;
-    ptr->tag = tag;
-    //how do you store things in this cache?
-=======
->>>>>>> origin/master
     //Went through the set, but no empty spaces...
     ptr = tail;
     
@@ -485,13 +446,6 @@ int iplc_sim_trap_address(unsigned int address)
 	cache_line_t* ptr = head;
 
 
-<<<<<<< HEAD
-	if (cache_assoc > 1) { 
-		index = index % cache_assoc;
-	}
-
-=======
->>>>>>> origin/master
 	// if (cache_assoc > 1) { 
 	// 	index = index % cache_assoc;
 	// }
@@ -502,10 +456,6 @@ int iplc_sim_trap_address(unsigned int address)
 			//hit
 			hit = 1;
 			cache_hit++;
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/master
             printf("We get here 3\n");
 			iplc_sim_LRU_update_on_hit(index, i);
 			return hit;
@@ -518,10 +468,6 @@ int iplc_sim_trap_address(unsigned int address)
 	}
 	//For loop ends; address is not yet stored
 	//miss
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/master
     printf("We get here 4\n");
 	cache_miss++;
 	iplc_sim_LRU_replace_on_miss(index, tag);
@@ -644,7 +590,6 @@ void iplc_sim_dump_pipeline()
  */
 void iplc_sim_push_pipeline_stage()
 {
-<<<<<<< HEAD
 	int i;
 	int data_hit = 1;
 	int normalProcessing = TRUE;
@@ -721,37 +666,6 @@ void iplc_sim_push_pipeline_stage()
 	pipeline[DECODE].itype = pipeline[FETCH].itype;
 	pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
 
-=======
-    int i;
-    int data_hit=1;
-    
-    /* 1. Count WRITEBACK stage is "retired" -- This I'm giving you */
-    if (pipeline[WRITEBACK].instruction_address) {
-        instruction_count++;
-        if (debug)
-            printf("DEBUG: Retired Instruction at 0x%x, Type %d, at Time %u \n",
-                   pipeline[WRITEBACK].instruction_address, pipeline[WRITEBACK].itype, pipeline_cycles);
-    }
-    
-    /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
-    if (pipeline[DECODE].itype == BRANCH) {
-        int branch_taken = 0;
-    }
-    
-    /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
-     *    add delay cycles if needed.
-     */
-    if (pipeline[MEM].itype == LW) {
-        int inserted_nop = 0;
-    }
-    
-    /* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
-    if (pipeline[MEM].itype == SW) {
-    }
-    
-    /* 5. Increment pipe_cycles 1 cycle for normal processing */
-    /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->ALU */
->>>>>>> origin/master
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
     bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
