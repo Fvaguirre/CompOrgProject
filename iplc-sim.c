@@ -180,7 +180,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
     
 	// Dynamically create our cache based on the information the user entered
-	if (assoc > 1) {
+	if (cache_assoc > 1) {
 		for (i = 0; i < (1 << index); i++) {
 			//If current cache_line index is first in set, set as set_head
 			if (i % assoc == 0) {
@@ -201,15 +201,23 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 					cache[i - j].set_tail = &cache[i];
 				}
 			}
+<<<<<<< HEAD
 			//Set other struct members to 0 or NULL
 			cache[i].tag = cache[i].valid_bit = FALSE;
 			cache[i].prev = cache[i].next = NULL;
 			//If neither head or tail
 			cache[i].is_tail = cache[i].is_head = FALSE;
+=======
+			// //Set other struct members  NULL
+			// cache[i].prev = cache[i].next = NULL;
+            cache[i].valid_bit = 0;
+            cache[i].tag = 0;
+>>>>>>> origin/master
 
 		}
 	}
 	else {
+        printf("We get here\n");
 		cache_line_t* head = NULL;
 		cache_line_t* tail = NULL;
 		for (i = 0; i < (1 << index); i++) {
@@ -218,6 +226,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 				cache[i].is_tail = FALSE;
 				head = &cache[i];
 			}
+<<<<<<< HEAD
 			else if (i == (1 << index - 1)) {
 				cache[i].is_tail = TRUE;
 				cache[i].is_head = FALSE;
@@ -225,8 +234,17 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 				for (j = 0; j < (1 << index); j++) {
 					cache[j].set_tail = tail;
 				}
+=======
+            //If at tail
+			else if (i == (1 << index) - 1) {
+                printf("we get here 2\n");
+				tail = &cache[i];
+                cache[i].prev = &cache[i-1];
+                cache[i].next = NULL;
+>>>>>>> origin/master
 			}
 			cache[i].set_head = head;
+<<<<<<< HEAD
 			//Set other struct members to 0 or NULL
 			cache[i].tag = cache[i].valid_bit = FALSE;
 			cache[i].prev = cache[i].next = NULL;
@@ -234,8 +252,28 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 			cache[i].is_tail = cache[i].is_head = FALSE;
 
 
+=======
+            cache[i].valid_bit = 0;
+            cache[i].tag = 0;
+			// //Set other struct members to NULL
+			// cache[i].prev = cache[i].next = NULL;
+>>>>>>> origin/master
 		}
+        //set the tail for all items in cache and connect pointers
+        for (j = 0; j < (1 << index); j++) {
+            cache[j].set_tail = tail;
+            //Excluding head and tail bc already set next and prev ptrs abovev for loop
+            if (j == 0){
+                continue;
+            }
+            else if (j == (1 << index) - 1){
+                continue;
+            }
+            cache[j].next = &cache[j+1];
+            cache[j].prev = &cache[j-1];
+        }
 	}
+    printf("It get's set correctly\n");
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -263,10 +301,24 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
         }
         ptr = ptr->next;
     }
+<<<<<<< HEAD
     //store the value at ptr here...
     ptr->valid_bit = TRUE;
     ptr->tag = tag;
     //how do you store things in this cache?
+=======
+    //Went through the set, but no empty spaces...
+    ptr = tail;
+    
+    while(ptr && ptr->prev){
+        //Move tags and valid bits one down
+        ptr->tag = ptr->prev->tag;
+        ptr = ptr->prev;
+    }
+    head->valid_bit = 1;
+    head->tag = tag;
+   
+>>>>>>> origin/master
 }
 
 /*
@@ -282,10 +334,20 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 	cache_line_t* ptr = head;
 
 	//Find the entry within the set that hit
-	while ((i < assoc_entry) && ptr) {
-		ptr = ptr->next;
-		i++;
-	}
+    if (cache_assoc > 1){
+        while ((i < assoc_entry) && ptr) {
+        ptr = ptr->next;
+        i++;
+        }
+    }
+    else{
+        while((i < assoc_entry) && ptr){
+            ptr = ptr->next;
+            i++;
+        }
+    }
+    
+	
 	assert(ptr->valid_bit);
 
 	//If entry that hit is already the head/MRU of set
@@ -349,23 +411,42 @@ int iplc_sim_trap_address(unsigned int address)
 	cache_line_t* ptr = head;
 
 
+<<<<<<< HEAD
 	if (cache_assoc > 1) { 
 		index = index % cache_assoc;
 	}
 
+=======
+	// if (cache_assoc > 1) { 
+	// 	index = index % cache_assoc;
+	// }
+    printf("It works here!!\n");
+    
+>>>>>>> origin/master
 	while (ptr) {
 		if (ptr->valid_bit && ptr->tag == tag) {
 			//hit
 			hit = 1;
 			cache_hit++;
+<<<<<<< HEAD
+=======
+            printf("We get here 3\n");
+>>>>>>> origin/master
 			iplc_sim_LRU_update_on_hit(index, i);
 			break;
 		}
+        printf("i: %d\n", i);
+        printf("ptr->tag: %d; ptr->valid_bit: %d\n", ptr->tag, ptr->valid_bit);
 		i++;
+       
 		ptr = ptr->next;
 	}
 	//For loop ends; address is not yet stored
 	//miss
+<<<<<<< HEAD
+=======
+    printf("We get here 4\n");
+>>>>>>> origin/master
 	cache_miss++;
 	iplc_sim_LRU_replace_on_miss(index, tag);
 	// if (cache[index].valid_bit){
