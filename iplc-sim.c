@@ -201,19 +201,15 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 					cache[i - j].set_tail = &cache[i];
 				}
 			}
-<<<<<<< HEAD
 			//Set other struct members to 0 or NULL
 			cache[i].tag = cache[i].valid_bit = FALSE;
 			cache[i].prev = cache[i].next = NULL;
 			//If neither head or tail
 			cache[i].is_tail = cache[i].is_head = FALSE;
-=======
 			// //Set other struct members  NULL
 			// cache[i].prev = cache[i].next = NULL;
             cache[i].valid_bit = 0;
             cache[i].tag = 0;
->>>>>>> origin/master
-
 		}
 	}
 	else {
@@ -226,7 +222,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 				cache[i].is_tail = FALSE;
 				head = &cache[i];
 			}
-<<<<<<< HEAD
 			else if (i == (1 << index - 1)) {
 				cache[i].is_tail = TRUE;
 				cache[i].is_head = FALSE;
@@ -234,17 +229,14 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 				for (j = 0; j < (1 << index); j++) {
 					cache[j].set_tail = tail;
 				}
-=======
             //If at tail
 			else if (i == (1 << index) - 1) {
                 printf("we get here 2\n");
 				tail = &cache[i];
                 cache[i].prev = &cache[i-1];
                 cache[i].next = NULL;
->>>>>>> origin/master
 			}
 			cache[i].set_head = head;
-<<<<<<< HEAD
 			//Set other struct members to 0 or NULL
 			cache[i].tag = cache[i].valid_bit = FALSE;
 			cache[i].prev = cache[i].next = NULL;
@@ -252,12 +244,10 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 			cache[i].is_tail = cache[i].is_head = FALSE;
 
 
-=======
             cache[i].valid_bit = 0;
             cache[i].tag = 0;
 			// //Set other struct members to NULL
 			// cache[i].prev = cache[i].next = NULL;
->>>>>>> origin/master
 		}
         //set the tail for all items in cache and connect pointers
         for (j = 0; j < (1 << index); j++) {
@@ -301,12 +291,10 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
         }
         ptr = ptr->next;
     }
-<<<<<<< HEAD
     //store the value at ptr here...
     ptr->valid_bit = TRUE;
     ptr->tag = tag;
     //how do you store things in this cache?
-=======
     //Went through the set, but no empty spaces...
     ptr = tail;
     
@@ -318,7 +306,6 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
     head->valid_bit = 1;
     head->tag = tag;
    
->>>>>>> origin/master
 }
 
 /*
@@ -411,27 +398,22 @@ int iplc_sim_trap_address(unsigned int address)
 	cache_line_t* ptr = head;
 
 
-<<<<<<< HEAD
 	if (cache_assoc > 1) { 
 		index = index % cache_assoc;
 	}
 
-=======
 	// if (cache_assoc > 1) { 
 	// 	index = index % cache_assoc;
 	// }
     printf("It works here!!\n");
     
->>>>>>> origin/master
 	while (ptr) {
 		if (ptr->valid_bit && ptr->tag == tag) {
 			//hit
 			hit = 1;
 			cache_hit++;
-<<<<<<< HEAD
-=======
+
             printf("We get here 3\n");
->>>>>>> origin/master
 			iplc_sim_LRU_update_on_hit(index, i);
 			break;
 		}
@@ -443,10 +425,8 @@ int iplc_sim_trap_address(unsigned int address)
 	}
 	//For loop ends; address is not yet stored
 	//miss
-<<<<<<< HEAD
-=======
+
     printf("We get here 4\n");
->>>>>>> origin/master
 	cache_miss++;
 	iplc_sim_LRU_replace_on_miss(index, tag);
 	// if (cache[index].valid_bit){
@@ -543,7 +523,8 @@ void iplc_sim_push_pipeline_stage()
 {
 	int i;
 	int data_hit = 1;
-
+	int normalProcessing = TRUE;
+	int NOP_ToInsert = 0;
 	/* 1. Count WRITEBACK stage is "retired" -- This I'm giving you */
 	if (pipeline[WRITEBACK].instruction_address) {
 		instruction_count++;
@@ -565,7 +546,10 @@ void iplc_sim_push_pipeline_stage()
 			correct_branch_predictions++;
 		}
 		else { //prediction was wrong and a NOP needs to be inserted
-			//i think we can just add the additional cycles????
+			pipeline_cycles += 10; //stall penalty for cache instruction miss
+			//inserting a NOP into the pipeline. 
+			NOP_ToInsert++;
+			normalProcessing = FALSE;
 
 		}
 	}
@@ -575,18 +559,32 @@ void iplc_sim_push_pipeline_stage()
 	 */
 	if (pipeline[MEM].itype == LW) {
 		int inserted_nop = 0;
+		//check for data miss
+		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
+		if (!data_hit) { //not found in cache, need to add stall
+			pipeline_cycles += 10;
+			normalProcessing = FALSE;
+		}
+		//need to check for the ALU delays
 	}
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
+		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
+		if (!data_hit) { //not found in cache, need to add stall
+			pipeline_cycles += 10;
+			normalProcessing = FALSE;
+		}
 	}
 
 	/* 5. Increment pipe_cycles 1 cycle for normal processing */
-	pipeline_cycles++; //I think that's all we need to do here. Not sure yet. Might have to have checks to make sure that it's 
-	//actually normal processing????
+	if (normalProcessing) {
+		pipeline_cycles++; //if normalProcessing is false than the pipeline cycles have already been added
+	}
 
 	/* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
 	//MEM-WB
+	
 	pipeline[WRITEBACK].itype = pipeline[MEM].itype;
 	pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
 	//ALU->MEM
