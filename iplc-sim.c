@@ -307,6 +307,7 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
     for (int i = 0; i < cache_assoc; i++){
         if (target_set->data[i].valid_bit == 0){
             is_space = TRUE;
+            break;
         }
         empty_index++;
     }
@@ -391,7 +392,7 @@ int iplc_sim_trap_address(unsigned int address)
   
     
 
-	cache_access++; //Cache is accessed
+	 //Cache is accessed
 
 	uint other_bits = cache_blockoffsetbits + cache_index;
 	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
@@ -500,6 +501,7 @@ void iplc_sim_push_pipeline_stage()
 			printf("DEBUG: Retired Instruction at 0x%x, Type %d, at Time %u \n",
 				pipeline[WRITEBACK].instruction_address, pipeline[WRITEBACK].itype, pipeline_cycles);
 	}
+
 	/* 2. Check for BRANCH and correct/incorrect Branch Prediction */
 	if (pipeline[DECODE].itype == BRANCH) {
 		int branch_taken = 0;
@@ -531,6 +533,7 @@ void iplc_sim_push_pipeline_stage()
 		if (!data_hit) { //not found in cache, need to add stall
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
+<<<<<<< HEAD
         }
         else {
             printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
@@ -576,6 +579,11 @@ void iplc_sim_push_pipeline_stage()
                 pipeline_cycles+=1;
         }
     }
+=======
+		}
+		//need to check for the ALU delays
+	}
+>>>>>>> origin/master
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
