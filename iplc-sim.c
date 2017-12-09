@@ -47,21 +47,17 @@ void iplc_sim_finalize();
 
 typedef struct cache_line
 {
-	int validBit;
-    // Your data structures for implementing your cache should include:
-    // a valid bit
-    // a tag
-    // a method for handling varying levels of associativity
-    // a method for selecting which item in the cache is going to be replaced
 	BIT valid_bit;
 	uint tag;
-	struct cache_line *prev, *next, *set_head, *set_tail;
-
-
+	struct cache_line *prev, *next,
 
 } cache_line_t;
 
-cache_line_t *cache=NULL;
+typedef struct set{
+    cache_line_t *set_head, *set_tail, *data;
+} set;
+
+set *cache=NULL;
 int cache_index=0;
 int cache_blocksize=0;
 int cache_blockoffsetbits = 0;
@@ -69,6 +65,8 @@ int cache_assoc=0;
 long cache_miss=0;
 long cache_access=0;
 long cache_hit=0;
+
+int test = 0;
 
 char instruction[16];
 char reg1[16];
@@ -151,6 +149,8 @@ pipeline_t pipeline[MAX_STAGES];
 /*
  * Correctly configure the cache.
  */
+
+
 void iplc_sim_init(int index, int blocksize, int assoc)
 {
     int i=0, j=0;
@@ -178,88 +178,111 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         exit(-1);
     }
     
-    cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
-    
-	// Dynamically create our cache based on the information the user entered
-	if (cache_assoc > 1) {
-		for (i = 0; i < (1 << index); i++) {
-			//If current cache_line index is first in set, set as set_head
-			if (i % assoc == 0) {
-				//Set the current cache_line as the head for the rest of the set...
-                //And connect the set with pointers...
-				for (j = 0; j < assoc; j++) {
-					cache[i + j].set_head = &cache[i];
-                    //If head of set next ptr, but not prev. (no prev for head)
-                    if(j == 0){
-                        cache[i+j].next = &cache[i+j+1];
-                        cache[i+j].prev = NULL;
-                    }
-                    //If at the last item in set, set prev, but not next ptr
-                    else if(j == assoc-1){
-                        cache[i+j].prev = &cache[i+j-1];
-                        cache[i+j].next = NULL;
-                    }
-                    //If not tail or head, set both prev and next ptrs
-                    else{
-                        cache[i+j].prev = &cache[i+j-1];
-                        cache[i+j].next = &cache[i+j+1];
-                    }
-				}
+    int total_lines = (1 << index);
 
-			}
-			//Else if last item in set mark as tail
-			else if (i % assoc == assoc - 1) {
-				//Set the current cache_line as the tail for the set...
-				for (j = 0; j < assoc; j++) {
-					cache[i - j].set_tail = &cache[i];
-				}
-			}
-			// //Set other struct members  NULL
-			// cache[i].prev = cache[i].next = NULL;
-            cache[i].valid_bit = 0;
-            cache[i].tag = 0;
-		}
-	}
-	else {
-        printf("We get here\n");
-		cache_line_t* head = NULL;
-		cache_line_t* tail = NULL;
-		for (i = 0; i < (1 << index); i++) {
-            //If head
-			if (i == 0) {
-				head = &cache[i];
-                cache[i].next = &cache[i+1];
-                cache[i].prev = NULL;
-			}
-            //If at tail
-			else if (i == (1 << index) - 1) {
-                printf("we get here 2\n");
-				tail = &cache[i];
-                cache[i].prev = &cache[i-1];
-                cache[i].next = NULL;
-			}
-            //Set head for all items in cache
-			cache[i].set_head = head;
-            cache[i].valid_bit = 0;
-            cache[i].tag = 0;
-			// //Set other struct members to NULL
-			// cache[i].prev = cache[i].next = NULL;
-		}
-        //set the tail for all items in cache and connect pointers
-        for (j = 0; j < (1 << index); j++) {
-            cache[j].set_tail = tail;
-            //Excluding head and tail bc already set next and prev ptrs abovev for loop
-            if (j == 0){
-                continue;
-            }
-            else if (j == (1 << index) - 1){
-                continue;
-            }
-            cache[j].next = &cache[j+1];
-            cache[j].prev = &cache[j-1];
+    cache = (set*) malloc(sizeof(set) * total_lines);
+
+
+
+    
+	// // Dynamically create our cache based on the information the user entered
+    for (i = 0; i < total_lines; i++){
+        cache[i].data = (cache_line_t*) malloc(sizeof(cache_line_t) * cache_assoc);
+        cache[i].set_head = &cache[i].data[0] //Set each sets head = to the first line in data
+        cache[i].set_tail = cache[i].set_head;
+        for (j = 0; j < cache_assoc; j++){
+            cache[i].data[j].tag = cache[i].data[j].valid_bit = 0;
+            //NULL the next and prev pointers for each line in set
+            cache[i].data[j].next = NULL;
+            cache[i].data[j].prev = NULL;
         }
-	}
-    printf("It get's set correctly\n");
+    }
+
+	// if (cache_assoc > 1) {
+	// 	for (i = 0; i < (1 << index); i++) {
+	// 		//If current cache_line index is first in set, set as set_head
+	// 		if (i % assoc == 0) {
+	// 			//Set the current cache_line as the head for the rest of the set...
+ //                //And connect the set with pointers...
+	// 			for (j = 0; j < assoc; j++) {
+	// 				cache[i + j].set_head = &cache[i];
+ //                    //If head of set next ptr, but not prev. (no prev for head)
+ //                    if(j == 0){
+ //                        cache[i+j].next = &cache[i+j+1];
+ //                        cache[i+j].prev = NULL;
+ //                    }
+ //                    //If at the last item in set, set prev, but not next ptr
+ //                    else if(j == assoc-1){
+ //                        cache[i+j].prev = &cache[i+j-1];
+ //                        cache[i+j].next = NULL;
+ //                    }
+ //                    //If not tail or head, set both prev and next ptrs
+ //                    else{
+ //                        cache[i+j].prev = &cache[i+j-1];
+ //                        cache[i+j].next = &cache[i+j+1];
+ //                    }
+	// 			}
+
+	// 		}
+	// 		//Else if last item in set mark as tail
+	// 		else if (i % assoc == assoc - 1) {
+	// 			//Set the current cache_line as the tail for the set...
+	// 			for (j = 0; j < assoc; j++) {
+	// 				cache[i - j].set_tail = &cache[i];
+	// 			}
+	// 		}
+	// 		// //Set other struct members  NULL
+	// 		// cache[i].prev = cache[i].next = NULL;
+ //            cache[i].valid_bit = 0;
+ //            cache[i].tag = 0;
+	// 	}
+	// }
+	// else {
+     
+	// 	cache_line_t* head = NULL;
+	// 	cache_line_t* tail = NULL;
+	// 	for (i = 0; i < (1 << index); i++) {
+ //            //If head
+	// 		if (i == 0) {
+	// 			head = &cache[i];
+ //                cache[i].next = &cache[i+1];
+ //                cache[i].prev = NULL;
+	// 		}
+ //            //If at tail
+	// 		else if (i == (1 << index) - 1) {
+             
+	// 			tail = &cache[i];
+ //                cache[i].prev = &cache[i-1];
+ //                cache[i].next = NULL;
+	// 		}
+ //            //Set head for all items in cache
+	// 		cache[i].set_head = head;
+ //            cache[i].valid_bit = 0;
+ //            cache[i].tag = 0;
+	// 		// //Set other struct members to NULL
+	// 		// cache[i].prev = cache[i].next = NULL;
+	// 	}
+ //        //set the tail for all items in cache and connect pointers
+ //        for (j = 0; j < (1 << index); j++) {
+ //            cache[j].set_tail = tail;
+ //            //Excluding head and tail bc already set next and prev ptrs abovev for loop
+ //            if (j == 0){
+ //                continue;
+ //            }
+ //            else if (j == (1 << index) - 1){
+ //                continue;
+ //            }
+ //            cache[j].next = &cache[j+1];
+ //            cache[j].prev = &cache[j-1];
+ //        }
+	// }
+    for (int i = 0; i < assoc; i++){
+        cache[i]
+    }
+  
+    // print_cache1();
+    // printf("\n");
+    // print_cache();
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -280,72 +303,72 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 
 
 
-    //finds the head and tail of the sets with an iterator at ptr
-    cache_line_t* head = cache[index].set_head;
-    cache_line_t* tail = cache[index].set_tail;
-    cache_line_t* ptr = head;
-    cache_line_t* temp = NULL;
-    cache_line_t* temp2 = NULL;
+    // //finds the head and tail of the sets with an iterator at ptr
+    // cache_line_t* head = cache[index].set_head;
+    // cache_line_t* tail = cache[index].set_tail;
+    // cache_line_t* ptr = head;
+    // cache_line_t* temp = NULL;
+    // cache_line_t* temp2 = NULL;
 
-    //looks through the list to see if there are any empty spaces, and if there is not it goes to the last space
-    while(ptr){
-        //If there is an empty space
-        //There are three cases (head, tail, or body of set)
-        if (ptr->valid_bit == 0){
-            ptr->valid_bit = 1;
-            ptr->tag = tag;
-            //If the empty space is the head of the set
-            if (ptr == head){
-                //Do nothing (already set)
-                return;
-            }
-            //If empty space is the end of set
-            else if (ptr == tail){
-               ptr->next = head;
-               head->prev = ptr;
-               tail = ptr->prev;
-               ptr->prev->next = NULL; //New tail!
-               ptr->prev = NULL; //New head MRU; updated!
-               head = ptr;
-               //update set_tail and set_head
-               while(ptr){
-                ptr->set_head = head;
-                ptr->set_tail = tail;
-                ptr = ptr->next;
-               }
-               return;
-            }
-            //If empty space is within the set but not the head or tail
-            else{
-                head-> prev = ptr;
-                temp = ptr->next;
-                ptr->next = head;
-                temp2 = ptr->prev;
-                ptr->prev = NULL;
-                head = ptr; //New head!
-                temp->prev = temp2;
-                temp2->next = temp;
-                //Tail is not updated, but set_head is
-                while(ptr){
-                    ptr->set_head = head;
-                    ptr = ptr->next;
-                }
-                return;
+    // //looks through the list to see if there are any empty spaces, and if there is not it goes to the last space
+    // while(ptr){
+    //     //If there is an empty space
+    //     //There are three cases (head, tail, or body of set)
+    //     if (ptr->valid_bit == 0){
+    //         ptr->valid_bit = 1;
+    //         ptr->tag = tag;
+    //         //If the empty space is the head of the set
+    //         if (ptr == head){
+    //             //Do nothing (already set)
+    //             return;
+    //         }
+    //         //If empty space is the end of set
+    //         else if (ptr == tail){
+    //            ptr->next = head;
+    //            head->prev = ptr;
+    //            tail = ptr->prev;
+    //            ptr->prev->next = NULL; //New tail!
+    //            ptr->prev = NULL; //New head MRU; updated!
+    //            head = ptr;
+    //            //update set_tail and set_head
+    //            while(ptr){
+    //             ptr->set_head = head;
+    //             ptr->set_tail = tail;
+    //             ptr = ptr->next;
+    //            }
+    //            return;
+    //         }
+    //         //If empty space is within the set but not the head or tail
+    //         else{
+    //             head-> prev = ptr;
+    //             temp = ptr->next;
+    //             ptr->next = head;
+    //             temp2 = ptr->prev;
+    //             ptr->prev = NULL;
+    //             head = ptr; //New head!
+    //             temp->prev = temp2;
+    //             temp2->next = temp;
+    //             //Tail is not updated, but set_head is
+    //             while(ptr){
+    //                 ptr->set_head = head;
+    //                 ptr = ptr->next;
+    //             }
+    //             return;
 
-            }
-        }
-        ptr = ptr->next;
-    }
-    //Went through the set, but no empty spaces...
-    ptr = tail;
+    //         }
+    //     }
+    //     ptr = ptr->next;
+    // }
+    // //Went through the set, but no empty spaces...
+    // ptr = tail;
     
-    while(ptr && ptr->prev){
-        //Move tags and valid bits one down
-        ptr->tag = ptr->prev->tag;
-        ptr = ptr->prev;
-    }
-    head->valid_bit = 1;
-    head->tag = tag;
+    // while(ptr && ptr->prev){
+    //     //Move tags and valid bits one down
+    //     ptr->tag = ptr->prev->tag;
+    //     ptr = ptr->prev;
+    // }
+    // head->valid_bit = 1;
+    // head->tag = tag;
    
 }
 
@@ -355,70 +378,30 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
  */
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
-    /* You must implement this function */
-	int i = 0;
-    int set_size = cache_assoc;
-	cache_line_t* head = cache[index].set_head;
-	cache_line_t* tail = cache[index].set_tail;
-	cache_line_t* ptr = head;
+    //Assoc_entry is entry index within cache[index] set that hit
 
-	//Find the entry within the set that hit
-    if (cache_assoc > 1){
-        while ((i < assoc_entry) && ptr) {
-        ptr = ptr->next;
-        i++;
+    //Find the set that hit belongs to
+    set* set_hit = &cache[index];
+    cache_line_t* head = &set_hit.set_head;
+    cache_line_t* tail = &set_hit.set_tail;
+    //Now find the entry within the set that hit
+    cache_line_t* entry_hit = &set_hit.data[assoc_entry];
+
+    //If already MRU do nothing..
+    if (entry_hit == head){
+        return;
+    }
+    //If assoc > 1 & in the body of set (not head)
+    else if (entry_hit->next){
+        entry_hit->next->prev = entry_hit->next;
+        if (entry_hit->prev){
+            entry_hit->prev->next = entry_hit->next;
+        }
+        //We are @ the head
+        else{
+
         }
     }
-    else{
-        while((i < assoc_entry) && ptr){
-            ptr = ptr->next;
-            i++;
-        }
-        set_size = (cache_index << 1); //if direct mapped
-    }
-    
-	
-	assert(ptr->valid_bit);
-
-	//If entry that hit is already the head/MRU of set
-	if (ptr->set_head == head) {
-		//do nothing
-		return;
-	}
-	//If entry that hit is the tail
-	else if (ptr->set_tail == ptr) {
-		ptr->prev->next = NULL;
-	}
-	else {
-		//Remove entry that hit from place in queue 
-		ptr->prev->next = ptr->next;
-		ptr->next->prev = ptr->prev;
-	}
-
-	//Move entry that hit to MRU
-	head->prev = ptr;
-	ptr->next = head;
-	ptr->prev = NULL;
-	head = ptr;
-
-	//Get new set_tail
-	while (ptr->next) {
-		ptr = ptr->next;
-	}
-	tail = ptr;
-
-	//Update the head_set & tail_set pointer for all items in set
-    ptr = head;
-    while(ptr){
-        ptr->set_head = head;
-        ptr->set_tail = tail;
-        ptr = ptr->next;
-    }
-	// for (i = 0; i < set_size; i++) {
-	// 	ptr->set_head = head;
-	// 	ptr->set_tail = tail;
-	// 	ptr = ptr->next;
-	// }
 
 }
 
@@ -434,92 +417,37 @@ int iplc_sim_trap_address(unsigned int address)
 	int tag = 0;
 	int hit = 0;
 
+  
+    
+
 	cache_access++; //Cache is accessed
 
 	uint other_bits = cache_blockoffsetbits + cache_index;
 	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
 
 	tag = address >> other_bits;
-	index = (bit_mask & address) >> cache_blockoffsetbits; //if index represents actual lines and not sets, will have to fix
-	cache_line_t* head = cache[index].set_head;
-	cache_line_t* tail = cache[index].set_tail;
-	cache_line_t* ptr = head;
+	index = (bit_mask & address) >> cache_blockoffsetbits; 
+  
+    printf("Address %x: Tag= %x, Index= %d \n", address, tag, index);
 
+	cache_access++;
+    for (i = 0; i < cache_assoc; i++){
+        //If the valid bit is one for an entry in the set and teh tag matches then 
+        //we hit
+        if((cache[index].lines[i].tag == tag) && (cache[index].data[i].valid)){
+            cache_hit++;
+            hit = 1;
+            iplc_sim_LRU_update_on_hit(index, i);
+            return hit;
+        }
+    }
+    //IF we went through the set but didnt find a match then it must be a miss
+    cache_miss++;
+    iplc_sim_LRU_replace_on_miss(index, tag);
 
-	// if (cache_assoc > 1) { 
-	// 	index = index % cache_assoc;
-	// }
-    printf("It works here!!\n");
-    
-	while (ptr) {
-		if ((ptr->valid_bit) && (ptr->tag == tag)) {
-			//hit
-			hit = 1;
-			cache_hit++;
-            printf("We get here 3\n");
-			iplc_sim_LRU_update_on_hit(index, i);
-			return hit;
-		}
-        printf("i: %d\n", i);
-        printf("ptr->tag: %d; ptr->valid_bit: %d\n", ptr->tag, ptr->valid_bit);
-		i++;
-       
-		ptr = ptr->next;
-	}
-	//For loop ends; address is not yet stored
-	//miss
-    printf("We get here 4\n");
-	cache_miss++;
-	iplc_sim_LRU_replace_on_miss(index, tag);
-	// if (cache[index].valid_bit){
-	//     if (cache[index].tag == tag){
-	//         //Hit
-	//         hit = 1;
-	//         cache_hit++;
-	//         iplc_sim_LRU_update_on_hit(index, i);
-	//     }
-	//     else{
-
-	//     }
-	// }
-
-
-
-
-	// Call the appropriate function for a miss or hit
-
-	/* expects you to return 1 for hit, 0 for miss */
+	
 	return hit;
 
-/*
-    int i=0, index=0; //I - i is the empty set value, index is the index in our cache
-    int tag=0;//I - the tag is the data being stowed in the cache
-    int hit=0;//I - if there was a hit
-    
-    //finding the index via bi twiddling
-    int temp = address;
-    temp = temp >> cache_blockoffsetbits;
-    index = 1;
-    index = index << cache_index+1;
-    index = index -1;
-    index = index & temp;
-
-    //finding the tag
-    //doesn't work yet, I think I'm close though, working on using bit shifting to find it
-    tag = address >> (cache_blockoffsetbits+cache_index);
-
-    //if()
-
-    // Call the appropriate function for a miss or hit
-
-    if(hit){
-        iplc_sim_LRU_update_on_hit(index,tag);//I - I presume we store tag an not address?
-    }
-    else{
-        iplc_sim_LRU_replace_on_miss(index,tag);
-    }
-    // expects you to return 1 for hit, 0 for miss
-    return hit;*/
 }
 
 /*
