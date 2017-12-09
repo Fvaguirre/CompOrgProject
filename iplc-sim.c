@@ -567,6 +567,7 @@ void iplc_sim_push_pipeline_stage()
         if (pipeline[ALU].itype == LW) {
             if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.lw.dest_reg) {
                 pipeline_cycles+=1;
+            }
         }
         if (pipeline[ALU].itype == RTYPE) {
             if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.rtype.dest_reg) {
@@ -576,6 +577,7 @@ void iplc_sim_push_pipeline_stage()
         if (pipeline[ALU].itype == LW) {
             if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.lw.dest_reg) {
                 pipeline_cycles+=1;
+           }
         }
     }
 
