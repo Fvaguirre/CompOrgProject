@@ -49,11 +49,12 @@ typedef struct cache_line
 {
 	BIT valid_bit;
 	uint tag;
-	struct cache_line *prev, *next,
+	struct cache_line *prev, *next;
 
 } cache_line_t;
 
-typedef struct set{
+typedef struct set
+{
     cache_line_t *set_head, *set_tail, *data;
 } set;
 
@@ -188,7 +189,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 	// // Dynamically create our cache based on the information the user entered
     for (i = 0; i < total_lines; i++){
         cache[i].data = (cache_line_t*) malloc(sizeof(cache_line_t) * cache_assoc);
-        cache[i].set_head = &cache[i].data[0] //Set each sets head = to the first line in data
+        cache[i].set_head = &cache[i].data[0]; //Set each sets head = to the first line in data
         cache[i].set_tail = cache[i].set_head;
         for (j = 0; j < cache_assoc; j++){
             cache[i].data[j].tag = cache[i].data[j].valid_bit = 0;
@@ -276,9 +277,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
  //            cache[j].prev = &cache[j-1];
  //        }
 	// }
-    for (int i = 0; i < assoc; i++){
-        cache[i]
-    }
+    
   
     // print_cache1();
     // printf("\n");
@@ -297,78 +296,44 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
     /* You must implement this function */
+    //Check if there is an empty space in set
+    set *target_set = &cache[index];
+    cache_line_t *head = target_set->set_head;
+    cache_line_t *ptr = NULL;
+    int empty_index = 0;
 
+    BIT is_space = FALSE;
 
-    //PROBABLY NEEDS SOME MODIFICATION FOR THE DIFFERENT ASSOCIATIVITES, IE if its 1 at least.
+    for (int i = 0; i < cache_assoc; i++){
+        if (target_set->data[i].valid_bit == 0){
+            is_space = TRUE;
+        }
+        empty_index++;
+    }
 
+    //If there is no more space in set
+    if (!is_space){
+        ptr = target_set->set_tail;
+        if (ptr->next){
+            target_set->set_tail = ptr->next;
+            target_set->set_tail->prev = NULL; 
+        }
+    }
+    //Else empty space at "empty_space"
+    else{
+        ptr = &target_set->data[empty_index];
+    }
 
+    //Set valid bit = 1 and tag
+    ptr->valid_bit = 1;
+    ptr->tag = tag;
 
-    // //finds the head and tail of the sets with an iterator at ptr
-    // cache_line_t* head = cache[index].set_head;
-    // cache_line_t* tail = cache[index].set_tail;
-    // cache_line_t* ptr = head;
-    // cache_line_t* temp = NULL;
-    // cache_line_t* temp2 = NULL;
-
-    // //looks through the list to see if there are any empty spaces, and if there is not it goes to the last space
-    // while(ptr){
-    //     //If there is an empty space
-    //     //There are three cases (head, tail, or body of set)
-    //     if (ptr->valid_bit == 0){
-    //         ptr->valid_bit = 1;
-    //         ptr->tag = tag;
-    //         //If the empty space is the head of the set
-    //         if (ptr == head){
-    //             //Do nothing (already set)
-    //             return;
-    //         }
-    //         //If empty space is the end of set
-    //         else if (ptr == tail){
-    //            ptr->next = head;
-    //            head->prev = ptr;
-    //            tail = ptr->prev;
-    //            ptr->prev->next = NULL; //New tail!
-    //            ptr->prev = NULL; //New head MRU; updated!
-    //            head = ptr;
-    //            //update set_tail and set_head
-    //            while(ptr){
-    //             ptr->set_head = head;
-    //             ptr->set_tail = tail;
-    //             ptr = ptr->next;
-    //            }
-    //            return;
-    //         }
-    //         //If empty space is within the set but not the head or tail
-    //         else{
-    //             head-> prev = ptr;
-    //             temp = ptr->next;
-    //             ptr->next = head;
-    //             temp2 = ptr->prev;
-    //             ptr->prev = NULL;
-    //             head = ptr; //New head!
-    //             temp->prev = temp2;
-    //             temp2->next = temp;
-    //             //Tail is not updated, but set_head is
-    //             while(ptr){
-    //                 ptr->set_head = head;
-    //                 ptr = ptr->next;
-    //             }
-    //             return;
-
-    //         }
-    //     }
-    //     ptr = ptr->next;
-    // }
-    // //Went through the set, but no empty spaces...
-    // ptr = tail;
-    
-    // while(ptr && ptr->prev){
-    //     //Move tags and valid bits one down
-    //     ptr->tag = ptr->prev->tag;
-    //     ptr = ptr->prev;
-    // }
-    // head->valid_bit = 1;
-    // head->tag = tag;
+    if (ptr != target_set->set_head){
+        target_set->set_head->next = ptr;
+        ptr->prev = target_set->set_head;
+        ptr->next = NULL;
+        target_set->set_head = ptr;
+    }
    
 }
 
@@ -382,10 +347,10 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 
     //Find the set that hit belongs to
     set* set_hit = &cache[index];
-    cache_line_t* head = &set_hit.set_head;
-    cache_line_t* tail = &set_hit.set_tail;
+    cache_line_t* head = set_hit->set_head;
+    cache_line_t* tail = set_hit->set_tail;
     //Now find the entry within the set that hit
-    cache_line_t* entry_hit = &set_hit.data[assoc_entry];
+    cache_line_t* entry_hit = &set_hit->data[assoc_entry];
 
     //If already MRU do nothing..
     if (entry_hit == head){
@@ -397,10 +362,16 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
         if (entry_hit->prev){
             entry_hit->prev->next = entry_hit->next;
         }
-        //We are @ the head
+        //We are @ the tail
         else{
-
+            set_hit->set_tail = entry_hit->next;
+            set_hit->set_tail->prev = NULL;
         }
+        //New head
+        set_hit->set_head->next = entry_hit;
+        entry_hit->prev = set_hit->set_head;
+        entry_hit->next = NULL;
+        set_hit->set_head = entry_hit;
     }
 
 }
@@ -434,7 +405,7 @@ int iplc_sim_trap_address(unsigned int address)
     for (i = 0; i < cache_assoc; i++){
         //If the valid bit is one for an entry in the set and teh tag matches then 
         //we hit
-        if((cache[index].lines[i].tag == tag) && (cache[index].data[i].valid)){
+        if((cache[index].data[i].tag == tag) && (cache[index].data[i].valid_bit)){
             cache_hit++;
             hit = 1;
             iplc_sim_LRU_update_on_hit(index, i);
@@ -463,6 +434,7 @@ void iplc_sim_finalize()
            pipeline[WRITEBACK].itype != NOP) {
         iplc_sim_push_pipeline_stage();
     }
+    
     printf(" Cache Performance \n");
     printf("\t Number of Cache Accesses is %ld \n", cache_access);
     printf("\t Number of Cache Misses is %ld \n", cache_miss);
@@ -530,25 +502,23 @@ void iplc_sim_push_pipeline_stage()
 	}
 	/* 2. Check for BRANCH and correct/incorrect Branch Prediction */
 	if (pipeline[DECODE].itype == BRANCH) {
-		int branch_taken = FALSE;
+		int branch_taken = 0;
 		branch_count++;
 		//assuming that the instructions are in order, the next instruction will just be the one in the fetch stage
-        if ((pipeline[DECODE].instruction_address + 4) != pipeline[FETCH].instruction_address) {
-            //branch was taken
+		if (pipeline[DECODE].instruction_address + 4 != pipeline[FETCH].instruction_address) {
+			//branch was taken
 			branch_taken = TRUE;
-        }
-		if (branch_taken == branch_predict_taken) {
-            if(pipeline[FETCH].itype != NOP) { //if the next instruction is a NOP then don't update correct branch predictions
-                correct_branch_predictions++;
-            }
 		}
-        else { //prediction was wrong and a NOP needs to be inserted
-            if(pipeline[FETCH].itype!=NOP) {                
-			    pipeline_cycles+=2; //extra stall cycle
-                NOP_ToInsert++;
-			    normalProcessing = FALSE;
-            }
-        }
+		if (branch_taken == branch_predict_taken) {
+			correct_branch_predictions++;
+		}
+		else { //prediction was wrong and a NOP needs to be inserted
+			pipeline_cycles += 10; //stall penalty for cache instruction miss
+			//inserting a NOP into the pipeline. 
+			NOP_ToInsert++;
+			normalProcessing = FALSE;
+
+		}
 	}
 
 	/* 3. Check for LW delays due to use in ALU stage and if data hit/miss
@@ -557,11 +527,11 @@ void iplc_sim_push_pipeline_stage()
 	if (pipeline[MEM].itype == LW) {
 		int inserted_nop = 0;
 		//check for data miss
-		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
-        if (!data_hit) { //not found in cache, need to add stall
-            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
+		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
+		if (!data_hit) { //not found in cache, need to add stall
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
+<<<<<<< HEAD
         }
         else {
             printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
@@ -586,42 +556,40 @@ void iplc_sim_push_pipeline_stage()
             }
         }
     }
+=======
+		}
+		//need to check for the ALU delays
+	}
+>>>>>>> origin/master
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
-		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
-        if (!data_hit) { //not found in cache, need to add stall
-            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);
+		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
+		if (!data_hit) { //not found in cache, need to add stall
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-        }
-        else {
-            printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);            
-        }
+		}
 	}
 
 	/* 5. Increment pipe_cycles 1 cycle for normal processing */
 	if (normalProcessing) {
 		pipeline_cycles++; //if normalProcessing is false than the pipeline cycles have already been added
 	}
-    
+
 	/* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
 	//MEM-WB
-	pipeline[WRITEBACK] = pipeline[MEM];
-	//pipeline[WRITEBACK].itype = pipeline[MEM].itype;
-	//pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
-    //ALU->MEM
-    pipeline[MEM] = pipeline[ALU];
-	//pipeline[MEM].itype = pipeline[ALU].itype;
-	//pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
+	
+	pipeline[WRITEBACK].itype = pipeline[MEM].itype;
+	pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
+	//ALU->MEM
+	pipeline[MEM].itype = pipeline[ALU].itype;
+	pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
 	//Decode->ALU
-    pipeline[ALU]=pipeline[DECODE];
-    //pipeline[ALU].itype = pipeline[DECODE].itype;
-	//pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
+	pipeline[ALU].itype = pipeline[DECODE].itype;
+	pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
 	//FETCH->DECODE
-    pipeline[DECODE] = pipeline[FETCH];
-    //pipeline[DECODE].itype = pipeline[FETCH].itype;
-	//pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
+	pipeline[DECODE].itype = pipeline[FETCH].itype;
+	pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
 
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
