@@ -531,8 +531,9 @@ void iplc_sim_push_pipeline_stage()
 	if (pipeline[MEM].itype == LW) {
 		int inserted_nop = 0;
 		//check for data miss
-		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
-		if (!data_hit) { //not found in cache, need to add stall
+		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
+        if (!data_hit) { //not found in cache, need to add stall
+            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
         }
@@ -562,22 +563,22 @@ void iplc_sim_push_pipeline_stage()
     //checking for possible forwarding
     if (pipeline[DECODE].itype == RTYPE) {
         if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.rtype.dest_reg) {
+            if (pipeline[DECODE].stage.rtype.reg1 != pipeline[ALU].stage.rtype.dest_reg) {
                 pipeline_cycles+=1;
             }
         }
         if (pipeline[ALU].itype == LW) {
-            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.lw.dest_reg) {
+            if (pipeline[DECODE].stage.rtype.reg1 != pipeline[ALU].stage.lw.dest_reg) {
                 pipeline_cycles+=1;
             }
         }
         if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.rtype.dest_reg) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant != pipeline[ALU].stage.rtype.dest_reg) {
                 pipeline_cycles+=1;
             }
         }
         if (pipeline[ALU].itype == LW) {
-            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.lw.dest_reg) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant != pipeline[ALU].stage.lw.dest_reg) {
                 pipeline_cycles+=1;
            }
         }
@@ -585,11 +586,15 @@ void iplc_sim_push_pipeline_stage()
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
-		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
-		if (!data_hit) { //not found in cache, need to add stall
+		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
+        if (!data_hit) { //not found in cache, need to add stall
+            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-		}
+        }
+        else {
+            printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);            
+        }
 	}
 
 	/* 5. Increment pipe_cycles 1 cycle for normal processing */
@@ -599,18 +604,21 @@ void iplc_sim_push_pipeline_stage()
 
 	/* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
 	//MEM-WB
-	
-	pipeline[WRITEBACK].itype = pipeline[MEM].itype;
-	pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
-	//ALU->MEM
-	pipeline[MEM].itype = pipeline[ALU].itype;
-	pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
+	pipeline[WRITEBACK] = pipeline[MEM];
+	//pipeline[WRITEBACK].itype = pipeline[MEM].itype;
+	//pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
+    //ALU->MEM
+    pipeline[MEM] = pipeline[ALU];
+	//pipeline[MEM].itype = pipeline[ALU].itype;
+	//pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
 	//Decode->ALU
-	pipeline[ALU].itype = pipeline[DECODE].itype;
-	pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
+    pipeline[ALU]=pipeline[DECODE];
+    //pipeline[ALU].itype = pipeline[DECODE].itype;
+	//pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
 	//FETCH->DECODE
-	pipeline[DECODE].itype = pipeline[FETCH].itype;
-	pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
+    pipeline[DECODE] = pipeline[FETCH];
+    //pipeline[DECODE].itype = pipeline[FETCH].itype;
+	//pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
 
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
