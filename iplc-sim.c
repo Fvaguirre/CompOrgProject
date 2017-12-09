@@ -555,6 +555,27 @@ void iplc_sim_push_pipeline_stage()
             }
         }
     }
+    //checking for possible forwarding
+    if (pipeline[DECODE].itype == RTYPE) {
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.rtype.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype == LW) {
+            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+        }
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.rtype.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype == LW) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+        }
+    }
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
