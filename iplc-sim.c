@@ -537,12 +537,6 @@ void iplc_sim_push_pipeline_stage()
             printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
         }
         //need to check for the ALU delays
-        if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.dest_reg) {
-                    //lw dest_reg is being used, need to stall
-                    pipeline_cycles+=1;
-                }
-        }
         if (pipeline[ALU].itype==LW) {
             if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.lw.dest_reg) {
                 pipeline_cycles+=1;
