@@ -503,24 +503,26 @@ void iplc_sim_push_pipeline_stage()
 	}
 
 	/* 2. Check for BRANCH and correct/incorrect Branch Prediction */
-	if (pipeline[DECODE].itype == BRANCH) {
-		int branch_taken = 0;
+    if (pipeline[DECODE].itype == BRANCH) {
+		int branch_taken = FALSE;
 		branch_count++;
 		//assuming that the instructions are in order, the next instruction will just be the one in the fetch stage
-		if (pipeline[DECODE].instruction_address + 4 != pipeline[FETCH].instruction_address) {
-			//branch was taken
+        if ((pipeline[DECODE].instruction_address + 4) != pipeline[FETCH].instruction_address) {
+            //branch was taken
 			branch_taken = TRUE;
-		}
+        }
 		if (branch_taken == branch_predict_taken) {
-			correct_branch_predictions++;
+            if(pipeline[FETCH].itype != NOP) { //if the next instruction is a NOP then don't update correct branch predictions
+                correct_branch_predictions++;
+            }
 		}
-		else { //prediction was wrong and a NOP needs to be inserted
-			pipeline_cycles += 10; //stall penalty for cache instruction miss
-			//inserting a NOP into the pipeline. 
-			NOP_ToInsert++;
-			normalProcessing = FALSE;
-
-		}
+        else { //prediction was wrong and a NOP needs to be inserted
+            if(pipeline[FETCH].itype!=NOP) {                
+			    pipeline_cycles+=2; //extra stall cycle
+                NOP_ToInsert++;
+			    normalProcessing = FALSE;
+            }
+        }
 	}
 
 	/* 3. Check for LW delays due to use in ALU stage and if data hit/miss
