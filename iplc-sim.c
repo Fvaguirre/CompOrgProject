@@ -533,7 +533,6 @@ void iplc_sim_push_pipeline_stage()
 		if (!data_hit) { //not found in cache, need to add stall
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-<<<<<<< HEAD
         }
         else {
             printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
@@ -579,11 +578,6 @@ void iplc_sim_push_pipeline_stage()
                 pipeline_cycles+=1;
         }
     }
-=======
-		}
-		//need to check for the ALU delays
-	}
->>>>>>> origin/master
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
