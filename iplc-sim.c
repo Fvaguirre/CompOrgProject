@@ -490,10 +490,8 @@ void iplc_sim_dump_pipeline()
  */
 void iplc_sim_push_pipeline_stage()
 {
-	int i;
 	int data_hit = 1;
 	int normalProcessing = TRUE;
-	int NOP_ToInsert = 0;
 	/* 1. Count WRITEBACK stage is "retired" -- This I'm giving you */
 	if (pipeline[WRITEBACK].instruction_address) {
 		instruction_count++;
@@ -519,7 +517,6 @@ void iplc_sim_push_pipeline_stage()
         else { //prediction was wrong and a NOP needs to be inserted
             if(pipeline[FETCH].itype!=NOP) {                
 			    pipeline_cycles+=2; //extra stall cycle
-                NOP_ToInsert++;
 			    normalProcessing = FALSE;
             }
         }
@@ -529,7 +526,6 @@ void iplc_sim_push_pipeline_stage()
 	 *    add delay cycles if needed.
 	 */
 	if (pipeline[MEM].itype == LW) {
-		int inserted_nop = 0;
 		//check for data miss
 		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
         if (!data_hit) { //not found in cache, need to add stall
@@ -543,8 +539,7 @@ void iplc_sim_push_pipeline_stage()
         //need to check for the ALU delays
         if (pipeline[ALU].itype == RTYPE) {
             if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg1 ||
-                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg2_or_constant ||
-                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.dest_reg) {
+                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg2_or_constant) {
                     //lw dest_reg is being used, need to stall
                     pipeline_cycles+=1;
                 }
@@ -605,21 +600,12 @@ void iplc_sim_push_pipeline_stage()
 	/* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
 	//MEM-WB
 	pipeline[WRITEBACK] = pipeline[MEM];
-	//pipeline[WRITEBACK].itype = pipeline[MEM].itype;
-	//pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
     //ALU->MEM
     pipeline[MEM] = pipeline[ALU];
-	//pipeline[MEM].itype = pipeline[ALU].itype;
-	//pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
 	//Decode->ALU
     pipeline[ALU]=pipeline[DECODE];
-    //pipeline[ALU].itype = pipeline[DECODE].itype;
-	//pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
-	//FETCH->DECODE
+    //FETCH->DECODE
     pipeline[DECODE] = pipeline[FETCH];
-    //pipeline[DECODE].itype = pipeline[FETCH].itype;
-	//pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
-
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
     bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
