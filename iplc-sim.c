@@ -307,6 +307,7 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
     for (int i = 0; i < cache_assoc; i++){
         if (target_set->data[i].valid_bit == 0){
             is_space = TRUE;
+            break;
         }
         empty_index++;
     }
@@ -391,7 +392,7 @@ int iplc_sim_trap_address(unsigned int address)
   
     
 
-	cache_access++; //Cache is accessed
+	 //Cache is accessed
 
 	uint other_bits = cache_blockoffsetbits + cache_index;
 	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
@@ -532,9 +533,51 @@ void iplc_sim_push_pipeline_stage()
 		if (!data_hit) { //not found in cache, need to add stall
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-		}
-		//need to check for the ALU delays
-	}
+        }
+        else {
+            printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
+        }
+        //need to check for the ALU delays
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg1 ||
+                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg2_or_constant ||
+                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.dest_reg) {
+                    //lw dest_reg is being used, need to stall
+                    pipeline_cycles+=1;
+                }
+        }
+        if (pipeline[ALU].itype==LW) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype==SW) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.sw.src_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+    }
+    //checking for possible forwarding
+    if (pipeline[DECODE].itype == RTYPE) {
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.rtype.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype == LW) {
+            if (pipeline[DECODE].stage.rtype.reg1 == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+        }
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.rtype.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype == LW) {
+            if (pipeline[DECODE].stage.rtype.reg2_or_constant == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+        }
+    }
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
