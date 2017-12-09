@@ -221,7 +221,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 		}
 	}
 	else {
-        printf("We get here\n");
+        //printf("We get here\n");
 		cache_line_t* head = NULL;
 		cache_line_t* tail = NULL;
 		for (i = 0; i < (1 << index); i++) {
@@ -233,7 +233,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
 			}
             //If at tail
 			else if (i == (1 << index) - 1) {
-                printf("we get here 2\n");
+                //printf("we get here 2\n");
 				tail = &cache[i];
                 cache[i].prev = &cache[i-1];
                 cache[i].next = NULL;
@@ -259,7 +259,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
             cache[j].prev = &cache[j-1];
         }
 	}
-    printf("It get's set correctly\n");
+    //printf("It get's set correctly\n");
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -449,26 +449,26 @@ int iplc_sim_trap_address(unsigned int address)
 	// if (cache_assoc > 1) { 
 	// 	index = index % cache_assoc;
 	// }
-    printf("It works here!!\n");
+    //printf("It works here!!\n");
     
 	while (ptr) {
 		if ((ptr->valid_bit) && (ptr->tag == tag)) {
 			//hit
 			hit = 1;
 			cache_hit++;
-            printf("We get here 3\n");
+            //printf("We get here 3\n");
 			iplc_sim_LRU_update_on_hit(index, i);
 			return hit;
 		}
-        printf("i: %d\n", i);
-        printf("ptr->tag: %d; ptr->valid_bit: %d\n", ptr->tag, ptr->valid_bit);
+        //printf("i: %d\n", i);
+        //printf("ptr->tag: %d; ptr->valid_bit: %d\n", ptr->tag, ptr->valid_bit);
 		i++;
        
 		ptr = ptr->next;
 	}
 	//For loop ends; address is not yet stored
 	//miss
-    printf("We get here 4\n");
+    //printf("We get here 4\n");
 	cache_miss++;
 	iplc_sim_LRU_replace_on_miss(index, tag);
 	// if (cache[index].valid_bit){
@@ -535,7 +535,6 @@ void iplc_sim_finalize()
            pipeline[WRITEBACK].itype != NOP) {
         iplc_sim_push_pipeline_stage();
     }
-    
     printf(" Cache Performance \n");
     printf("\t Number of Cache Accesses is %ld \n", cache_access);
     printf("\t Number of Cache Misses is %ld \n", cache_miss);
@@ -604,23 +603,25 @@ void iplc_sim_push_pipeline_stage()
 
 	/* 2. Check for BRANCH and correct/incorrect Branch Prediction */
 	if (pipeline[DECODE].itype == BRANCH) {
-		int branch_taken = 0;
+		int branch_taken = FALSE;
 		branch_count++;
 		//assuming that the instructions are in order, the next instruction will just be the one in the fetch stage
-		if (pipeline[DECODE].instruction_address + 4 != pipeline[FETCH].instruction_address) {
-			//branch was taken
+        if ((pipeline[DECODE].instruction_address + 4) != pipeline[FETCH].instruction_address) {
+            //branch was taken
 			branch_taken = TRUE;
-		}
+        }
 		if (branch_taken == branch_predict_taken) {
-			correct_branch_predictions++;
+            if(pipeline[FETCH].itype != NOP) { //if the next instruction is a NOP then don't update correct branch predictions
+                correct_branch_predictions++;
+            }
 		}
-		else { //prediction was wrong and a NOP needs to be inserted
-			pipeline_cycles += 10; //stall penalty for cache instruction miss
-			//inserting a NOP into the pipeline. 
-			NOP_ToInsert++;
-			normalProcessing = FALSE;
-
-		}
+        else { //prediction was wrong and a NOP needs to be inserted
+            if(pipeline[FETCH].itype!=NOP) {                
+			    pipeline_cycles+=2; //extra stall cycle
+                NOP_ToInsert++;
+			    normalProcessing = FALSE;
+            }
+        }
 	}
 
 	/* 3. Check for LW delays due to use in ALU stage and if data hit/miss
@@ -629,42 +630,53 @@ void iplc_sim_push_pipeline_stage()
 	if (pipeline[MEM].itype == LW) {
 		int inserted_nop = 0;
 		//check for data miss
-		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
-		if (!data_hit) { //not found in cache, need to add stall
+		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
+        if (!data_hit) { //not found in cache, need to add stall
+            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-		}
+        }
+        else {
+            printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
+        }
 		//need to check for the ALU delays
 	}
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
-		data_hit = iplc_sim_trap_address(pipeline[MEM].instruction_address);
-		if (!data_hit) { //not found in cache, need to add stall
+		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
+        if (!data_hit) { //not found in cache, need to add stall
+            printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);
 			pipeline_cycles += 10;
 			normalProcessing = FALSE;
-		}
+        }
+        else {
+            printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.sw.data_address);            
+        }
 	}
 
 	/* 5. Increment pipe_cycles 1 cycle for normal processing */
 	if (normalProcessing) {
 		pipeline_cycles++; //if normalProcessing is false than the pipeline cycles have already been added
 	}
-
+    
 	/* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
 	//MEM-WB
-	
-	pipeline[WRITEBACK].itype = pipeline[MEM].itype;
-	pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
-	//ALU->MEM
-	pipeline[MEM].itype = pipeline[ALU].itype;
-	pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
+	pipeline[WRITEBACK] = pipeline[MEM];
+	//pipeline[WRITEBACK].itype = pipeline[MEM].itype;
+	//pipeline[WRITEBACK].instruction_address = pipeline[MEM].instruction_address;
+    //ALU->MEM
+    pipeline[MEM] = pipeline[ALU];
+	//pipeline[MEM].itype = pipeline[ALU].itype;
+	//pipeline[MEM].instruction_address = pipeline[ALU].instruction_address;
 	//Decode->ALU
-	pipeline[ALU].itype = pipeline[DECODE].itype;
-	pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
+    pipeline[ALU]=pipeline[DECODE];
+    //pipeline[ALU].itype = pipeline[DECODE].itype;
+	//pipeline[ALU].instruction_address = pipeline[DECODE].instruction_address;
 	//FETCH->DECODE
-	pipeline[DECODE].itype = pipeline[FETCH].itype;
-	pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
+    pipeline[DECODE] = pipeline[FETCH];
+    //pipeline[DECODE].itype = pipeline[FETCH].itype;
+	//pipeline[DECODE].instruction_address = pipeline[FETCH].instruction_address;
 
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
