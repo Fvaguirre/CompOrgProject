@@ -181,11 +181,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     
     int total_lines = (1 << index);
 
-    cache = (set*) malloc(sizeof(set) * total_lines);
-
-
-
-    
+    cache = (set*) malloc(sizeof(set) * total_lines);    
 	// // Dynamically create our cache based on the information the user entered
     for (i = 0; i < total_lines; i++){
         cache[i].data = (cache_line_t*) malloc(sizeof(cache_line_t) * cache_assoc);
@@ -199,89 +195,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         }
     }
 
-	// if (cache_assoc > 1) {
-	// 	for (i = 0; i < (1 << index); i++) {
-	// 		//If current cache_line index is first in set, set as set_head
-	// 		if (i % assoc == 0) {
-	// 			//Set the current cache_line as the head for the rest of the set...
- //                //And connect the set with pointers...
-	// 			for (j = 0; j < assoc; j++) {
-	// 				cache[i + j].set_head = &cache[i];
- //                    //If head of set next ptr, but not prev. (no prev for head)
- //                    if(j == 0){
- //                        cache[i+j].next = &cache[i+j+1];
- //                        cache[i+j].prev = NULL;
- //                    }
- //                    //If at the last item in set, set prev, but not next ptr
- //                    else if(j == assoc-1){
- //                        cache[i+j].prev = &cache[i+j-1];
- //                        cache[i+j].next = NULL;
- //                    }
- //                    //If not tail or head, set both prev and next ptrs
- //                    else{
- //                        cache[i+j].prev = &cache[i+j-1];
- //                        cache[i+j].next = &cache[i+j+1];
- //                    }
-	// 			}
-
-	// 		}
-	// 		//Else if last item in set mark as tail
-	// 		else if (i % assoc == assoc - 1) {
-	// 			//Set the current cache_line as the tail for the set...
-	// 			for (j = 0; j < assoc; j++) {
-	// 				cache[i - j].set_tail = &cache[i];
-	// 			}
-	// 		}
-	// 		// //Set other struct members  NULL
-	// 		// cache[i].prev = cache[i].next = NULL;
- //            cache[i].valid_bit = 0;
- //            cache[i].tag = 0;
-	// 	}
-	// }
-	// else {
-     
-	// 	cache_line_t* head = NULL;
-	// 	cache_line_t* tail = NULL;
-	// 	for (i = 0; i < (1 << index); i++) {
- //            //If head
-	// 		if (i == 0) {
-	// 			head = &cache[i];
- //                cache[i].next = &cache[i+1];
- //                cache[i].prev = NULL;
-	// 		}
- //            //If at tail
-	// 		else if (i == (1 << index) - 1) {
-             
-	// 			tail = &cache[i];
- //                cache[i].prev = &cache[i-1];
- //                cache[i].next = NULL;
-	// 		}
- //            //Set head for all items in cache
-	// 		cache[i].set_head = head;
- //            cache[i].valid_bit = 0;
- //            cache[i].tag = 0;
-	// 		// //Set other struct members to NULL
-	// 		// cache[i].prev = cache[i].next = NULL;
-	// 	}
- //        //set the tail for all items in cache and connect pointers
- //        for (j = 0; j < (1 << index); j++) {
- //            cache[j].set_tail = tail;
- //            //Excluding head and tail bc already set next and prev ptrs abovev for loop
- //            if (j == 0){
- //                continue;
- //            }
- //            else if (j == (1 << index) - 1){
- //                continue;
- //            }
- //            cache[j].next = &cache[j+1];
- //            cache[j].prev = &cache[j-1];
- //        }
-	// }
-    
-  
-    // print_cache1();
-    // printf("\n");
-    // print_cache();
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -298,7 +211,6 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
     /* You must implement this function */
     //Check if there is an empty space in set
     set *target_set = &cache[index];
-    cache_line_t *head = target_set->set_head;
     cache_line_t *ptr = NULL;
     int empty_index = 0;
 
@@ -349,7 +261,6 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
     //Find the set that hit belongs to
     set* set_hit = &cache[index];
     cache_line_t* head = set_hit->set_head;
-    cache_line_t* tail = set_hit->set_tail;
     //Now find the entry within the set that hit
     cache_line_t* entry_hit = &set_hit->data[assoc_entry];
 
@@ -387,13 +298,9 @@ int iplc_sim_trap_address(unsigned int address)
 {
 	int i = 0, index = 0;
 	int tag = 0;
-	int hit = 0;
-
-  
+    int hit = 0;
     
-
 	 //Cache is accessed
-
 	uint other_bits = cache_blockoffsetbits + cache_index;
 	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
 
@@ -417,9 +324,7 @@ int iplc_sim_trap_address(unsigned int address)
     cache_miss++;
     iplc_sim_LRU_replace_on_miss(index, tag);
 
-	
 	return hit;
-
 }
 
 /*
@@ -458,8 +363,7 @@ void iplc_sim_finalize()
  */
 void iplc_sim_dump_pipeline()
 {
-    int i;
-    
+    int i;    
     for (i = 0; i < MAX_STAGES; i++) {
         switch(i) {
             case FETCH:
@@ -516,7 +420,7 @@ void iplc_sim_push_pipeline_stage()
 		}
         else { //prediction was wrong and a NOP needs to be inserted
             if(pipeline[FETCH].itype!=NOP) {                
-			    pipeline_cycles+=2; //extra stall cycle
+			    pipeline_cycles+=2; //extra stall cycle. adds 2 because of the 1 additional stall and 1 normal processing
 			    normalProcessing = FALSE;
             }
         }
@@ -530,7 +434,7 @@ void iplc_sim_push_pipeline_stage()
 		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.lw.data_address);
         if (!data_hit) { //not found in cache, need to add stall
             printf("DATA MISS: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
-			pipeline_cycles += 10;
+			pipeline_cycles += 10; //10 stall cycles for a data hazard
 			normalProcessing = FALSE;
         }
         else {
@@ -539,12 +443,12 @@ void iplc_sim_push_pipeline_stage()
         //need to check for the ALU delays
         if (pipeline[ALU].itype==LW) {
             if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.lw.dest_reg) {
-                pipeline_cycles+=1;
+                pipeline_cycles+=1; //need to stall for a cycle
             }
         }
         if (pipeline[ALU].itype==SW) {
             if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.sw.src_reg) {
-                pipeline_cycles+=1;
+                pipeline_cycles+=1; //need to stall for a cycle
             }
         }
     }
@@ -601,11 +505,13 @@ void iplc_sim_process_pipeline_rtype(char *instruction, int dest_reg, int reg1, 
 void iplc_sim_process_pipeline_lw(int dest_reg, int base_reg, unsigned int data_address)
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-
+	iplc_sim_push_pipeline_stage(); //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = LW;
 	pipeline[FETCH].instruction_address = instruction_address;
 
+    //setting the registers
 	pipeline[FETCH].stage.lw.dest_reg = dest_reg;
 	pipeline[FETCH].stage.lw.base_reg = base_reg;
 	pipeline[FETCH].stage.lw.data_address = data_address;
@@ -614,11 +520,13 @@ void iplc_sim_process_pipeline_lw(int dest_reg, int base_reg, unsigned int data_
 void iplc_sim_process_pipeline_sw(int src_reg, int base_reg, unsigned int data_address)
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-
+	iplc_sim_push_pipeline_stage(); //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = SW;
 	pipeline[FETCH].instruction_address = instruction_address;
 
+    //setting the registers
 	pipeline[FETCH].stage.sw.src_reg = src_reg;
 	pipeline[FETCH].stage.sw.base_reg = base_reg;
 	pipeline[FETCH].stage.sw.data_address = data_address;
@@ -627,11 +535,13 @@ void iplc_sim_process_pipeline_sw(int src_reg, int base_reg, unsigned int data_a
 void iplc_sim_process_pipeline_branch(int reg1, int reg2)
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-
+	iplc_sim_push_pipeline_stage();  //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = BRANCH;
 	pipeline[FETCH].instruction_address = instruction_address;
 
+    //setting the registers
 	pipeline[FETCH].stage.branch.reg1 = reg1;
 	pipeline[FETCH].stage.branch.reg2 = reg2;
 }
@@ -639,19 +549,22 @@ void iplc_sim_process_pipeline_branch(int reg1, int reg2)
 void iplc_sim_process_pipeline_jump(char *instruction)
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-
+	iplc_sim_push_pipeline_stage();  //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = JUMP;
 	pipeline[FETCH].instruction_address = instruction_address;
 
+    //copying the instruction
 	strcpy(pipeline[FETCH].stage.jump.instruction, instruction);
 }
 
 void iplc_sim_process_pipeline_syscall()
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-	
+	iplc_sim_push_pipeline_stage();  //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = SYSCALL;
 	pipeline[FETCH].instruction_address = instruction_address;
 
@@ -660,8 +573,9 @@ void iplc_sim_process_pipeline_syscall()
 void iplc_sim_process_pipeline_nop()
 {
     /* You must implement this function */
-	iplc_sim_push_pipeline_stage();
-
+	iplc_sim_push_pipeline_stage();  //pushing the pipeline along
+    
+    //setting the pipeline fetch stage to the appropriate values
 	pipeline[FETCH].itype = NOP;
 	pipeline[FETCH].instruction_address = instruction_address;
 }
