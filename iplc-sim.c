@@ -538,8 +538,7 @@ void iplc_sim_push_pipeline_stage()
         }
         //need to check for the ALU delays
         if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg1 ||
-                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg2_or_constant) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.dest_reg) {
                     //lw dest_reg is being used, need to stall
                     pipeline_cycles+=1;
                 }
@@ -555,30 +554,6 @@ void iplc_sim_push_pipeline_stage()
             }
         }
     }
-    //checking for possible forwarding
-    if (pipeline[DECODE].itype == RTYPE) {
-        if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[DECODE].stage.rtype.reg1 != pipeline[ALU].stage.rtype.dest_reg) {
-                pipeline_cycles+=1;
-            }
-        }
-        if (pipeline[ALU].itype == LW) {
-            if (pipeline[DECODE].stage.rtype.reg1 != pipeline[ALU].stage.lw.dest_reg) {
-                pipeline_cycles+=1;
-            }
-        }
-        if (pipeline[ALU].itype == RTYPE) {
-            if (pipeline[DECODE].stage.rtype.reg2_or_constant != pipeline[ALU].stage.rtype.dest_reg) {
-                pipeline_cycles+=1;
-            }
-        }
-        if (pipeline[ALU].itype == LW) {
-            if (pipeline[DECODE].stage.rtype.reg2_or_constant != pipeline[ALU].stage.lw.dest_reg) {
-                pipeline_cycles+=1;
-           }
-        }
-    }
-
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
 		data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
