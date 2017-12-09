@@ -178,90 +178,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         exit(-1);
     }
     
-<<<<<<< HEAD
-    cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
-    
-	// Dynamically create our cache based on the information the user entered
-	if (cache_assoc > 1) {
-		for (i = 0; i < (1 << index); i++) {
-			//If current cache_line index is first in set, set as set_head
-			if (i % assoc == 0) {
-				//Set the current cache_line as the head for the rest of the set...
-                //And connect the set with pointers...
-				for (j = 0; j < assoc; j++) {
-					cache[i + j].set_head = &cache[i];
-                    //If head of set next ptr, but not prev. (no prev for head)
-                    if(j == 0){
-                        cache[i+j].next = &cache[i+j+1];
-                        cache[i+j].prev = NULL;
-                    }
-                    //If at the last item in set, set prev, but not next ptr
-                    else if(j == assoc-1){
-                        cache[i+j].prev = &cache[i+j-1];
-                        cache[i+j].next = NULL;
-                    }
-                    //If not tail or head, set both prev and next ptrs
-                    else{
-                        cache[i+j].prev = &cache[i+j-1];
-                        cache[i+j].next = &cache[i+j+1];
-                    }
-				}
-
-			}
-			//Else if last item in set mark as tail
-			else if (i % assoc == assoc - 1) {
-				//Set the current cache_line as the tail for the set...
-				for (j = 0; j < assoc; j++) {
-					cache[i - j].set_tail = &cache[i];
-				}
-			}
-			// //Set other struct members  NULL
-			// cache[i].prev = cache[i].next = NULL;
-            cache[i].valid_bit = 0;
-            cache[i].tag = 0;
-		}
-	}
-	else {
-        //printf("We get here\n");
-		cache_line_t* head = NULL;
-		cache_line_t* tail = NULL;
-		for (i = 0; i < (1 << index); i++) {
-            //If head
-			if (i == 0) {
-				head = &cache[i];
-                cache[i].next = &cache[i+1];
-                cache[i].prev = NULL;
-			}
-            //If at tail
-			else if (i == (1 << index) - 1) {
-                //printf("we get here 2\n");
-				tail = &cache[i];
-                cache[i].prev = &cache[i-1];
-                cache[i].next = NULL;
-			}
-            //Set head for all items in cache
-			cache[i].set_head = head;
-            cache[i].valid_bit = 0;
-            cache[i].tag = 0;
-			// //Set other struct members to NULL
-			// cache[i].prev = cache[i].next = NULL;
-		}
-        //set the tail for all items in cache and connect pointers
-        for (j = 0; j < (1 << index); j++) {
-            cache[j].set_tail = tail;
-            //Excluding head and tail bc already set next and prev ptrs abovev for loop
-            if (j == 0){
-                continue;
-            }
-            else if (j == (1 << index) - 1){
-                continue;
-            }
-            cache[j].next = &cache[j+1];
-            cache[j].prev = &cache[j-1];
-        }
-	}
-    //printf("It get's set correctly\n");
-=======
     int total_lines = (1 << index);
 
     cache = (set*) malloc(sizeof(set) * total_lines);
@@ -367,7 +283,6 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     // print_cache1();
     // printf("\n");
     // print_cache();
->>>>>>> origin/master
     // init the pipeline -- set all data to zero and instructions to NOP
     for (i = 0; i < MAX_STAGES; i++) {
         // itype is set to O which is NOP type instruction
@@ -511,55 +426,6 @@ int iplc_sim_trap_address(unsigned int address)
 	uint bit_mask = ((1 << cache_index) - 1) << cache_blockoffsetbits;
 
 	tag = address >> other_bits;
-<<<<<<< HEAD
-	index = (bit_mask & address) >> cache_blockoffsetbits; //if index represents actual lines and not sets, will have to fix
-	cache_line_t* head = cache[index].set_head;
-	cache_line_t* tail = cache[index].set_tail;
-	cache_line_t* ptr = head;
-
-
-	// if (cache_assoc > 1) { 
-	// 	index = index % cache_assoc;
-	// }
-    //printf("It works here!!\n");
-    
-	while (ptr) {
-		if ((ptr->valid_bit) && (ptr->tag == tag)) {
-			//hit
-			hit = 1;
-			cache_hit++;
-            //printf("We get here 3\n");
-			iplc_sim_LRU_update_on_hit(index, i);
-			return hit;
-		}
-        //printf("i: %d\n", i);
-        //printf("ptr->tag: %d; ptr->valid_bit: %d\n", ptr->tag, ptr->valid_bit);
-		i++;
-       
-		ptr = ptr->next;
-	}
-	//For loop ends; address is not yet stored
-	//miss
-    //printf("We get here 4\n");
-	cache_miss++;
-	iplc_sim_LRU_replace_on_miss(index, tag);
-	// if (cache[index].valid_bit){
-	//     if (cache[index].tag == tag){
-	//         //Hit
-	//         hit = 1;
-	//         cache_hit++;
-	//         iplc_sim_LRU_update_on_hit(index, i);
-	//     }
-	//     else{
-
-	//     }
-	// }
-
-
-
-
-	// Call the appropriate function for a miss or hit
-=======
 	index = (bit_mask & address) >> cache_blockoffsetbits; 
   
     printf("Address %x: Tag= %x, Index= %d \n", address, tag, index);
@@ -578,7 +444,6 @@ int iplc_sim_trap_address(unsigned int address)
     //IF we went through the set but didnt find a match then it must be a miss
     cache_miss++;
     iplc_sim_LRU_replace_on_miss(index, tag);
->>>>>>> origin/master
 
 	
 	return hit;
@@ -663,7 +528,6 @@ void iplc_sim_push_pipeline_stage()
 			printf("DEBUG: Retired Instruction at 0x%x, Type %d, at Time %u \n",
 				pipeline[WRITEBACK].instruction_address, pipeline[WRITEBACK].itype, pipeline_cycles);
 	}
-
 	/* 2. Check for BRANCH and correct/incorrect Branch Prediction */
 	if (pipeline[DECODE].itype == BRANCH) {
 		int branch_taken = FALSE;
@@ -702,8 +566,26 @@ void iplc_sim_push_pipeline_stage()
         else {
             printf("DATA HIT: ADDRESS 0x%x\n", pipeline[MEM].stage.lw.data_address);
         }
-		//need to check for the ALU delays
-	}
+        //need to check for the ALU delays
+        if (pipeline[ALU].itype == RTYPE) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg1 ||
+                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.reg2_or_constant ||
+                pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.rtype.dest_reg) {
+                    //lw dest_reg is being used, need to stall
+                    pipeline_cycles+=1;
+                }
+        }
+        if (pipeline[ALU].itype==LW) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.lw.dest_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+        if (pipeline[ALU].itype==SW) {
+            if (pipeline[MEM].stage.lw.dest_reg == pipeline[ALU].stage.sw.src_reg) {
+                pipeline_cycles+=1;
+            }
+        }
+    }
 
 	/* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
 	if (pipeline[MEM].itype == SW) {
